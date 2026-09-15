@@ -2,7 +2,7 @@ name: Collect Hashes
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Cada hora
+    - cron: '17 * * * *'  # Cada hora (minuto 17: el 0 es el más saturado en GitHub)
   workflow_dispatch:  # Permitir ejecución manual
 
 jobs:
