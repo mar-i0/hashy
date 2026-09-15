@@ -2,12 +2,9 @@
 import requests
 import re
 import os
-from datetime import datetime
 
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
-
-def get_timestamp():
-    return datetime.now().strftime("%Y%m%d_%H")
+HASHES_FILE = "hashes/hashes_unicos.txt"
+IPS_FILE = "hashes/ips_unicas.txt"
 
 def download_page(url, headers=None):
     try:
@@ -49,41 +46,19 @@ def extract_ips(text):
             ips.add(match)
     return list(ips)
 
-def save_to_file(filepath, data):
-    if not data:
-        print(f"No data to save to {filepath}")
-        return False
-    
+def merge_into_file(filepath, data):
+    existing = set()
+    if os.path.exists(filepath):
+        with open(filepath) as f:
+            existing = {line.strip() for line in f if line.strip()}
+    new = set(data) - existing
+    if not new:
+        print(f"No new items for {filepath}")
+        return
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    content = '\n'.join(sorted(set(data))) + '\n'
-    
-    if len(content.encode()) > MAX_FILE_SIZE:
-        parts = []
-        current = []
-        current_size = 0
-        for item in sorted(set(data)):
-            item_size = len(item.encode()) + 1
-            if current_size + item_size > MAX_FILE_SIZE:
-                parts.append(current)
-                current = []
-                current_size = 0
-            current.append(item)
-            current_size += item_size
-        if current:
-            parts.append(current)
-        
-        base_path = filepath.replace('.txt', '')
-        for i, part in enumerate(parts, 1):
-            part_path = f"{base_path}_part{i}.txt"
-            with open(part_path, 'w') as f:
-                f.write('\n'.join(sorted(part)) + '\n')
-            print(f"Saved {len(part)} items to {part_path}")
-        return True
-    else:
-        with open(filepath, 'w') as f:
-            f.write(content)
-        print(f"Saved {len(data)} items to {filepath}")
-        return True
+    with open(filepath, 'w') as f:
+        f.write('\n'.join(sorted(existing | new)) + '\n')
+    print(f"Added {len(new)} new items to {filepath} ({len(existing | new)} total)")
 
 def download_triage():
     print("Downloading Triage...")
@@ -112,23 +87,13 @@ def download_valhalla():
     return hashes
 
 def main():
-    ts = get_timestamp()
-    base_dir = "hashes"
-    
     hashes_triage = download_triage()
-    if hashes_triage:
-        save_to_file(f"{base_dir}/triage/hashes_triage_{ts}.txt", hashes_triage)
-    
     hashes_vx, ips_vx = download_vxvault()
-    if hashes_vx:
-        save_to_file(f"{base_dir}/vxvault/hashes_vxvault_{ts}.txt", hashes_vx)
-    if ips_vx:
-        save_to_file(f"{base_dir}/vxvault/ips_vxvault_{ts}.txt", ips_vx)
-    
     hashes_valhalla = download_valhalla()
-    if hashes_valhalla:
-        save_to_file(f"{base_dir}/valhalla/hashes_valhalla_{ts}.txt", hashes_valhalla)
-    
+
+    merge_into_file(HASHES_FILE, hashes_triage + hashes_vx + hashes_valhalla)
+    merge_into_file(IPS_FILE, ips_vx)
+
     print("Done!")
 
 if __name__ == "__main__":
