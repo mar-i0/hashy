@@ -4,7 +4,6 @@ import re
 import os
 
 HASHES_FILE = "hashes/hashes_unicos.txt"
-IPS_FILE = "hashes/ips_unicas.txt"
 
 def download_page(url, headers=None):
     try:
@@ -25,26 +24,6 @@ def extract_hashes_sha256(text):
             if len(match) == 64:
                 hashes.add(match.lower())
     return list(hashes)
-
-def extract_hashes_md5(text):
-    hashes = set()
-    patterns = [
-        r'\b[a-fA-F0-9]{32}\b',
-    ]
-    for pattern in patterns:
-        for match in re.findall(pattern, text):
-            if len(match) == 32:
-                hashes.add(match.lower())
-    return list(hashes)
-
-def extract_ips(text):
-    ips = set()
-    pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
-    for match in re.findall(pattern, text):
-        parts = match.split('.')
-        if len(parts) == 4 and all(0 <= int(p) <= 255 for p in parts if p.isdigit()):
-            ips.add(match)
-    return list(ips)
 
 def merge_into_file(filepath, data):
     existing = set()
@@ -68,15 +47,6 @@ def download_triage():
     print(f"Found {len(hashes)} hashes from Triage")
     return hashes
 
-def download_vxvault():
-    print("Downloading VX Vault...")
-    url = "http://vxvault.net/ViriList.php?s=0&m=100"
-    text = download_page(url)
-    hashes = extract_hashes_md5(text)
-    ips = extract_ips(text)
-    print(f"Found {len(hashes)} hashes and {len(ips)} IPs from VX Vault")
-    return hashes, ips
-
 def download_valhalla():
     print("Downloading Valhalla...")
     url = "https://valhalla.nextron-systems.com"
@@ -88,11 +58,9 @@ def download_valhalla():
 
 def main():
     hashes_triage = download_triage()
-    hashes_vx, ips_vx = download_vxvault()
     hashes_valhalla = download_valhalla()
 
-    merge_into_file(HASHES_FILE, hashes_triage + hashes_vx + hashes_valhalla)
-    merge_into_file(IPS_FILE, ips_vx)
+    merge_into_file(HASHES_FILE, hashes_triage + hashes_valhalla)
 
     print("Done!")
 
